@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1F4E78">
+<title>حضور و غیاب</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="حضور و غیاب">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  :root{
+    --primary:#1F4E78; --primary-light:#2d6aa3; --accent:#10b981;
+    --danger:#ef4444; --warn:#f59e0b; --bg:#f0f2f5; --card:#ffffff;
+    --text:#1f2937; --muted:#6b7280; --border:#e5e7eb;
+  }
+  body{
+    font-family:'Tahoma','Vazirmatn',sans-serif; background:var(--bg);
+    color:var(--text); direction:rtl; padding-bottom:80px;
+    -webkit-user-select:none; user-select:none;
+  }
+  header{
+    background:linear-gradient(135deg,var(--primary),var(--primary-light));
+    color:#fff; padding:18px 16px; text-align:center; position:sticky; top:0; z-index:50;
+    box-shadow:0 2px 8px rgba(0,0,0,.15);
+  }
+  header h1{ font-size:19px; font-weight:bold; }
+  header .date{ font-size:13px; opacity:.92; margin-top:4px; }
+  header .clock{ font-size:15px; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .container{ padding:14px; max-width:640px; margin:0 auto; }
+
+  .voice-bar{
+    background:var(--card); border-radius:14px; padding:14px; margin-bottom:14px;
+    box-shadow:0 1px 4px rgba(0,0,0,.06); text-align:center;
+  }
+  .mic-btn{
+    width:72px; height:72px; border-radius:50%; border:none; cursor:pointer;
+    background:linear-gradient(135deg,var(--accent),#059669); color:#fff;
+    font-size:30px; box-shadow:0 4px 12px rgba(16,185,129,.4);
+    transition:transform .15s; display:inline-flex; align-items:center; justify-content:center;
+  }
+  .mic-btn:active{ transform:scale(.92); }
+  .mic-btn.listening{ animation:pulse 1.2s infinite; background:linear-gradient(135deg,var(--danger),#dc2626); }
+  @keyframes pulse{ 0%{box-shadow:0 0 0 0 rgba(239,68,68,.5);} 70%{box-shadow:0 0 0 18px rgba(239,68,68,0);} 100%{box-shadow:0 0 0 0 rgba(239,68,68,0);} }
+  .voice-hint{ font-size:12px; color:var(--muted); margin-top:10px; line-height:1.7; }
+  .voice-status{ font-size:13px; color:var(--primary); margin-top:6px; min-height:18px; font-weight:bold; }
+
+  .card{
+    background:var(--card); border-radius:14px; padding:14px; margin-bottom:12px;
+    box-shadow:0 1px 4px rgba(0,0,0,.06);
+  }
+  .person-row{
+    display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--border);
+    flex-wrap:wrap;
+  }
+  .person-row:last-child{ border-bottom:none; }
+  .person-info{ flex:1; min-width:0; }
+  .person-name{ font-weight:bold; font-size:15px; }
+  .person-status{ font-size:12px; margin-top:3px; }
+  .status-in{ color:var(--accent); }
+  .status-out{ color:var(--muted); }
+  .badge{ display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; margin-right:4px; }
+  .badge-in{ background:#d1fae5; color:#065f46; }
+  .badge-out{ background:#f3f4f6; color:#374151; }
+  .btn{
+    border:none; border-radius:10px; padding:9px 14px; font-size:13px; font-weight:bold;
+    cursor:pointer; font-family:inherit; transition:opacity .15s;
+  }
+  .btn:active{ opacity:.7; }
+  .btn-in{ background:var(--accent); color:#fff; }
+  .btn-out{ background:var(--warn); color:#fff; }
+  .btn-primary{ background:var(--primary); color:#fff; }
+  .btn-ghost{ background:#f3f4f6; color:var(--text); }
+  .btn-danger{ background:var(--danger); color:#fff; }
+  .btn-block{ width:100%; padding:13px; font-size:15px; }
+  .btn-sm{ padding:6px 10px; font-size:12px; }
+
+  .section-title{ font-size:14px; font-weight:bold; color:var(--primary); margin:4px 0 10px; }
+  .nav{
+    position:fixed; bottom:0; right:0; left:0; background:var(--card);
+    display:flex; border-top:1px solid var(--border); z-index:50;
+    box-shadow:0 -2px 8px rgba(0,0,0,.06);
+  }
+  .nav button{
+    flex:1; border:none; background:none; padding:10px 4px; cursor:pointer; font-family:inherit;
+    color:var(--muted); font-size:11px; display:flex; flex-direction:column; align-items:center; gap:3px;
+  }
+  .nav button.active{ color:var(--primary); font-weight:bold; }
+  .nav button .ic{ font-size:20px; }
+
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(0,0,0,.5); display:none;
+    align-items:center; justify-content:center; z-index:100; padding:16px;
+  }
+  .modal-bg.show{ display:flex; }
+  .modal{ background:var(--card); border-radius:16px; padding:18px; width:100%; max-width:380px; }
+  .modal h3{ font-size:16px; margin-bottom:14px; color:var(--primary); }
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:13px; margin-bottom:5px; color:var(--muted); }
+  .field input, .field select{
+    width:100%; padding:11px; border:1px solid var(--border); border-radius:10px;
+    font-family:inherit; font-size:15px; direction:rtl; background:#fff; color:var(--text);
+  }
+  .field .time-inputs{ display:flex; gap:8px; }
+  .field .time-inputs input{ text-align:center; font-variant-numeric:tabular-nums; }
+  .modal-actions{ display:flex; gap:8px; margin-top:8px; }
+  .modal-actions .btn{ flex:1; }
+
+  .month-nav{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+  .month-nav button{ background:#f3f4f6; border:none; border-radius:10px; padding:8px 14px; font-size:18px; cursor:pointer; }
+  .month-nav .mlabel{ font-weight:bold; font-size:15px; }
+  .cal-day{ padding:9px 0; border-radius:8px; cursor:pointer; font-variant-numeric:tabular-nums; font-size:13px; }
+  .cal-day:active{ opacity:.6; }
+  .cal-day.today{ border:1px solid var(--primary); font-weight:bold; }
+  .cal-day.has-data{ background:#eef6ff; }
+  .cal-day.on-leave{ background:#fef3c7; }
+  table{ width:100%; border-collapse:collapse; font-size:12px; }
+  th,td{ padding:8px 4px; text-align:center; border-bottom:1px solid var(--border); }
+  th{ color:var(--primary); font-size:11px; }
+  td.num{ font-variant-numeric:tabular-nums; }
+  .summary-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+  .stat{ background:#f8fafc; border-radius:10px; padding:12px; text-align:center; }
+  .stat .v{ font-size:20px; font-weight:bold; color:var(--primary); }
+  .stat .l{ font-size:11px; color:var(--muted); margin-top:3px; }
+  .empty{ text-align:center; color:var(--muted); padding:30px 10px; font-size:14px; }
+  .page{ display:none; }
+  .page.active{ display:block; }
+  .log-item{ display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .log-item .t{ font-variant-numeric:tabular-nums; color:var(--muted); }
+  .toast{
+    position:fixed; bottom:90px; right:50%; transform:translateX(50%);
+    background:#111827; color:#fff; padding:11px 20px; border-radius:24px; font-size:13px;
+    z-index:200; opacity:0; transition:opacity .3s; pointer-events:none; max-width:90%; text-align:center;
+  }
+  .toast.show{ opacity:1; }
+  select.person-pick{ width:auto; padding:7px; font-size:13px; }
+  .reason-chip{ border-radius:20px !important; }
+  .reason-chip.picked{ background:var(--warn) !important; color:#fff !important; }
+  .reason-tag{ display:inline-block; font-size:11px; color:#92400e; background:#fef3c7; border-radius:8px; padding:1px 7px; margin-right:4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>سامانه حضور و غیاب</h1>
+  <div class="date" id="todayDate">—</div>
+  <div class="clock" id="liveClock">—</div>
+</header>
+
+<!-- ===== صفحه امروز ===== -->
+<div class="page active" id="page-today">
+  <div class="container">
+    <div class="voice-bar">
+      <button class="mic-btn" id="micBtn">🎙️</button>
+      <div class="voice-status" id="voiceStatus"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <input type="text" id="cmdInput" placeholder="یا اینجا تایپ کن، مثلاً: امین ساعت ۹ اومد" style="flex:1;padding:11px;border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;direction:rtl;">
+        <button class="btn btn-primary" id="cmdBtn">ثبت</button>
+      </div>
+      <div class="voice-hint">
+        بگو یا تایپ کن، آزادانه و بدون نیاز به اینترنت، مثلاً:<br>
+        «<b>امین امروز ساعت ۹ صبح آمد</b>»<br>
+        «<b>رضا دیروز ساعت ۵ و نیم بعدازظهر رفت</b>»<br>
+        «<b>امین و رضا ساعت ۸ آمدند</b>» (چند نفر با هم)<br>
+        «<b>همه ساعت ۸ آمدند</b>» (همه پرسنل)<br>
+        «<b>امین اومد ولی محمود مریضه</b>» (چند نفر، هرکدام وضعیت جدا)<br>
+        «<b>علی امروز مرخصیه چون مریضه</b>» (مرخصی + دلیل)
+      </div>
+    </div>
+
+    <div class="card" style="padding:10px 12px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <button class="btn btn-ghost btn-sm" id="prevDayBtn">‹ قبل</button>
+        <div style="text-align:center;cursor:pointer;" id="dateDisplayBtn">
+          <div style="font-weight:bold;font-size:14px;" id="selectedDateLabel">امروز</div>
+          <div style="font-size:11px;color:var(--muted);" id="selectedDateSub"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="nextDayBtn">بعد ›</button>
+      </div>
+      <button class="btn btn-primary btn-block btn-sm" id="jumpTodayBtn" style="margin-top:8px;display:none;">بازگشت به امروز</button>
+    </div>
+
+    <div class="summary-grid" id="todaySummary" style="grid-template-columns:repeat(4,1fr);"></div>
+
+    <div class="card">
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <button class="btn btn-in" style="flex:1;" onclick="allIn()">ورود همه</button>
+        <button class="btn btn-out" style="flex:1;" onclick="allOut()">خروج همه</button>
+      </div>
+      <input type="text" id="todaySearchBox" placeholder="🔍 جستجوی پرسنل..." style="width:100%;padding:10px;border:1px solid var(--border);border-radius:10px;font-family:inherit;font-size:14px;direction:rtl;">
+    </div>
+
+    <div class="card">
+      <div class="section-title" id="staffListTitle">پرسنل امروز</div>
+      <div id="todayList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== صفحه پرسنل ===== -->
+<div class="page" id="page-staff">
+  <div class="container">
+    <div class="card">
+      <div class="section-title">مدیریت پرسنل (حداکثر ۱۰ نفر)</div>
+      <div id="staffList"></div>
+      <button class="btn btn-primary btn-block" id="addStaffBtn" style="margin-top:12px;">+ افزودن پرسنل</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== صفحه گزارش ===== -->
+<div class="page" id="page-report">
+  <div class="container">
+    <div class="card">
+      <div class="month-nav">
+        <button id="nextMonth">‹</button>
+        <span class="mlabel" id="monthLabel" style="cursor:pointer;">—</span>
+        <button id="prevMonth">›</button>
+      </div>
+      <div class="field">
+        <label>انتخاب پرسنل</label>
+        <select id="reportPerson"></select>
+      </div>
+      <div class="summary-grid" id="summaryGrid"></div>
+      <div style="overflow-x:auto;">
+        <table id="reportTable"></table>
+      </div>
+      <button class="btn btn-ghost btn-block" id="exportBtn" style="margin-top:12px;">📤 خروجی متنی گزارش</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== صفحه تنظیمات ===== -->
+<div class="page" id="page-settings">
+  <div class="container">
+    <div class="card">
+      <div class="section-title">نصب برنامه روی گوشی</div>
+      <p id="installStatusText" style="font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:12px;"></p>
+      <button class="btn btn-primary btn-block" id="installBtn" style="display:none;">📲 نصب برنامه</button>
+      <div id="iosInstallHint" style="display:none;font-size:12px;color:var(--muted);line-height:1.9;background:#f8fafc;border-radius:10px;padding:10px 12px;">
+        روی آیفون: دکمهٔ <b>اشتراک‌گذاری</b> (مربع با فلش رو به بالا) پایین صفحهٔ Safari را بزن، بعد <b>«Add to Home Screen»</b> یا <b>«افزودن به صفحهٔ خانه»</b> را انتخاب کن.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">دسترسی میکروفون</div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:12px;">
+        برای ثبت با صدا، مرورگر یک‌بار اجازهٔ میکروفون می‌خواهد. اگر قبلاً رد کرده باشی، از تنظیمات گوشی/مرورگر باید دستی فعالش کنی.
+      </p>
+      <div id="micStatusText" style="font-size:13px;font-weight:bold;margin-bottom:10px;">وضعیت: نامشخص</div>
+      <button class="btn btn-primary btn-block" id="micRequestBtn">🎙️ بررسی و درخواست دسترسی میکروفون</button>
+    </div>
+
+    <div class="card">
+      <div class="section-title">تنظیمات دستیار هوشمند</div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:12px;">
+        موتور آفلاین اپ کاملاً روی گوشی کار می‌کند و به اینترنت نیاز ندارد؛ جمله‌هایی با چند نفر و وضعیت‌های جدا (مثل «امین اومد ولی محمود مریضه») را هم می‌فهمد. فقط برای جمله‌های خیلی غیرمعمول که موتور آفلاین نفهمد، می‌توانید یکی از دستیارهای آنلاین زیر را وصل کنید تا کمک کند.
+      </p>
+      <div class="field">
+        <label>دستیار آنلاین (اختیاری)</label>
+        <select id="aiProvider">
+          <option value="none">هیچ‌کدام (فقط موتور آفلاین)</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="claude">Anthropic Claude</option>
+        </select>
+      </div>
+      <div class="field" id="geminiKeyField" style="display:none;">
+        <label>کلید Gemini API</label>
+        <input type="password" id="geminiKey" placeholder="AIza...">
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;">از <b>aistudio.google.com</b> می‌توانید کلید رایگان بسازید.</p>
+      </div>
+      <div class="field" id="claudeKeyField" style="display:none;">
+        <label>کلید Anthropic API</label>
+        <input type="password" id="claudeKey" placeholder="sk-ant-...">
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;">
+          این کلید را از <b>console.anthropic.com</b> (پنل توسعه‌دهندگان Anthropic) می‌سازید — با اکانت Claude.ai که همین‌جا باهاش چت می‌کنید فرق دارد و طبق مصرف هزینه دارد. با وارد کردن این کلید، خودِ اپ روی گوشی مستقیماً با Claude تماس می‌گیرد؛ من (Claude در این چت) به برنامهٔ نصب‌شده روی گوشی شما دسترسی زنده ندارم.
+        </p>
+      </div>
+      <button class="btn btn-primary btn-block" id="saveSettingsBtn">ذخیره تنظیمات</button>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;">
+        کلید فقط روی همین گوشی ذخیره می‌شود و جای دیگری فرستاده نمی‌شود.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="section-title">پشتیبان‌گیری و بازیابی</div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.8;margin-bottom:12px;">
+        برای محافظت از اطلاعات، فایل پشتیبان بگیرید و جای امن نگه دارید. هنگام تعویض گوشی، نصب مجدد، یا وقتی نسخهٔ جدید همین اپ را جایگزین می‌کنید، همان فایل را بازیابی کنید تا چیزی از دست نرود.
+      </p>
+      <div id="lastBackupInfo" style="font-size:12px;color:var(--muted);margin-bottom:10px;"></div>
+      <button class="btn btn-primary btn-block" id="backupBtn" style="margin-bottom:8px;">📥 دانلود فایل پشتیبان</button>
+      <button class="btn btn-ghost btn-block" id="restoreBtn">📤 بازیابی از فایل</button>
+      <input type="file" id="restoreFile" accept=".json" style="display:none;">
+      <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.7;">
+        نکته: تا وقتی نسخهٔ جدید اپ را روی همان آدرس/فایل قبلی جایگزین کنید، اطلاعات (که روی خود گوشی ذخیره شده) پاک نمی‌شود. برای اطمینان کامل، همیشه قبل از جایگزینی نسخهٔ جدید یک فایل پشتیبان بگیرید و بعد از باز کردن نسخهٔ جدید، در صورت خالی بودن، همان را بازیابی کنید.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ناوبری -->
+<nav class="nav">
+  <button class="active" data-page="today"><span class="ic">📋</span>امروز</button>
+  <button data-page="report"><span class="ic">📊</span>گزارش</button>
+  <button data-page="staff"><span class="ic">👥</span>پرسنل</button>
+  <button data-page="settings"><span class="ic">⚙️</span>تنظیمات</button>
+</nav>
+
+<!-- مودال پرسنل -->
+<div class="modal-bg" id="staffModal">
+  <div class="modal">
+    <h3 id="staffModalTitle">افزودن پرسنل</h3>
+    <div class="field">
+      <label>نام پرسنل</label>
+      <input type="text" id="staffName" placeholder="مثلاً: امین">
+    </div>
+    <div class="field">
+      <label>ساعت موظف روزانه (برای محاسبه اضافه‌کاری/کسری)</label>
+      <div class="time-inputs">
+        <input type="number" id="staffHours" min="0" max="24" value="8" placeholder="ساعت">
+        <input type="number" id="staffMins" min="0" max="59" value="0" placeholder="دقیقه">
+      </div>
+    </div>
+    <div class="field">
+      <label>ساعت شروع کار رسمی (برای محاسبه تأخیر)</label>
+      <div class="time-inputs">
+        <input type="number" id="staffStartH" min="0" max="23" value="8" placeholder="ساعت">
+        <input type="number" id="staffStartM" min="0" max="59" value="0" placeholder="دقیقه">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeStaffModal()">انصراف</button>
+      <button class="btn btn-primary" id="saveStaffBtn">ذخیره</button>
+    </div>
+  </div>
+</div>
+
+<!-- مودال ویرایش زمان -->
+<div class="modal-bg" id="timeModal">
+  <div class="modal">
+    <h3 id="timeModalTitle">ثبت / ویرایش زمان</h3>
+    <div id="entriesEditor"></div>
+    <div style="display:flex;gap:8px;margin:4px 0 14px;">
+      <button type="button" class="btn btn-in btn-sm" style="flex:1;" onclick="addEntryRow('in')">+ ورود</button>
+      <button type="button" class="btn btn-out btn-sm" style="flex:1;" onclick="addEntryRow('out')">+ خروج</button>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0 12px;">
+      <input type="checkbox" id="leaveChk" style="width:auto;">
+      مرخصی / غایب (این روز)
+    </label>
+    <div class="field" id="reasonField" style="display:none;">
+      <label>دلیل</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="reasonChips">
+        <button type="button" class="btn btn-ghost btn-sm reason-chip" data-r="مریضی">مریضی</button>
+        <button type="button" class="btn btn-ghost btn-sm reason-chip" data-r="مرخصی استحقاقی">مرخصی استحقاقی</button>
+        <button type="button" class="btn btn-ghost btn-sm reason-chip" data-r="کار شخصی">کار شخصی</button>
+        <button type="button" class="btn btn-ghost btn-sm reason-chip" data-r="بدون اطلاع">بدون اطلاع</button>
+      </div>
+      <input type="text" id="reasonInput" placeholder="توضیح دلیل (اختیاری)">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-danger btn-sm" id="clearTimeBtn" style="flex:0 0 auto;">پاک کردن همه</button>
+      <button class="btn btn-ghost" onclick="closeTimeModal()">انصراف</button>
+      <button class="btn btn-primary" id="saveTimeBtn">ذخیره</button>
+    </div>
+  </div>
+</div>
+
+<!-- مودال تقویم شمسی -->
+<div class="modal-bg" id="calModal">
+  <div class="modal">
+    <div class="month-nav">
+      <button id="calPrevMonth">‹</button>
+      <span class="mlabel" id="calMonthLabel">—</span>
+      <button id="calNextMonth">›</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:11px;color:var(--muted);margin-bottom:6px;" id="calWeekHead"></div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;" id="calGrid"></div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="btn btn-ghost btn-block" onclick="closeCalModal()">انصراف</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ تقویم شمسی (تبدیل میلادی به جلالی) ============ */
+function toJalali(gy, gm, gd){
+  var g_d_m=[0,31,59,90,120,151,181,212,243,273,304,334];
+  var jy = (gy<=1600)?0:979; gy-=(gy<=1600)?621:1600;
+  var gy2=(gm>2)?(gy+1):gy;
+  var days=(365*gy)+(Math.floor((gy2+3)/4))-(Math.floor((gy2+99)/100))
+    +(Math.floor((gy2+399)/400))-80+gd+g_d_m[gm-1];
+  jy+=33*Math.floor(days/12053); days%=12053;
+  jy+=4*Math.floor(days/1461); days%=1461;
+  jy+=Math.floor((days-1)/365); if(days>365) days=(days-1)%365;
+  var jm=(days<186)?1+Math.floor(days/31):7+Math.floor((days-186)/30);
+  var jd=1+((days<186)?(days%31):((days-186)%30));
+  return [jy,jm,jd];
+}
+function jalaliToGregorian(jy,jm,jd){
+  jy+=1595; var days=-355668+(365*jy)+(Math.floor(jy/33)*8)+Math.floor(((jy%33)+3)/4)+jd
+    +((jm<7)?(jm-1)*31:((jm-7)*30)+186);
+  var gy=400*Math.floor(days/146097); days%=146097;
+  if(days>36524){ gy+=100*Math.floor(--days/36524); days%=36524; if(days>=365)days++; }
+  gy+=4*Math.floor(days/1461); days%=1461;
+  if(days>365){ gy+=Math.floor((days-1)/365); days=(days-1)%365; }
+  var gd=days+1;
+  var sal_a=[0,31,((gy%4===0&&gy%100!==0)||(gy%400===0))?29:28,31,30,31,30,31,31,30,31,30,31];
+  var gm=0; for(gm=1;gm<=12;gm++){ if(gd<=sal_a[gm])break; gd-=sal_a[gm]; }
+  return [gy,gm,gd];
+}
+function jMonthDays(jy,jm){
+  if(jm<=6)return 31; if(jm<=11)return 30;
+  // اسفند: بررسی کبیسه
+  var g=jalaliToGregorian(jy,12,1);
+  // اگر سال بعد فروردین ۱ منهای یک روز = ۳۰ یا ۲۹
+  return isJLeap(jy)?30:29;
+}
+function isJLeap(jy){
+  var r=jy%33;
+  return [1,5,9,13,17,22,26,30].indexOf(r)!==-1;
+}
+var J_MONTHS=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+var J_WEEK=['یکشنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنجشنبه','جمعه','شنبه'];
+function jWeekday(jy,jm,jd){
+  var g=jalaliToGregorian(jy,jm,jd);
+  var d=new Date(g[0],g[1]-1,g[2]);
+  return d.getDay(); // 0=یکشنبه
+}
+function todayJalali(){
+  var n=new Date();
+  return toJalali(n.getFullYear(),n.getMonth()+1,n.getDate());
+}
+function jKey(jy,jm,jd){ return jy+'-'+String(jm).padStart(2,'0')+'-'+String(jd).padStart(2,'0'); }
+
+/* ============ ذخیره‌سازی دائمی ============ */
+var DB={ staff:[], records:{} }; // records[personId][dateKey]={in:"HH:MM",out:"HH:MM"}
+function load(){
+  try{
+    var s=localStorage.getItem('attendanceDB');
+    if(s) DB=JSON.parse(s);
+  }catch(e){}
+  if(!DB.staff) DB.staff=[];
+  if(!DB.records) DB.records={};
+}
+function save(){ localStorage.setItem('attendanceDB',JSON.stringify(DB)); }
+
+/* ============ کمکی ============ */
+function pad(n){ return String(n).padStart(2,'0'); }
+function toast(msg){
+  var t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');},2200);
+}
+function minutesOf(hhmm){ if(!hhmm)return null; var p=hhmm.split(':'); return (+p[0])*60+(+p[1]); }
+function fmtDuration(mins){
+  if(mins===null||isNaN(mins))return '—';
+  var neg=mins<0; mins=Math.abs(mins);
+  return (neg?'−':'')+Math.floor(mins/60)+':'+pad(mins%60);
+}
+
+/* ============ منطق پرسنل ============ */
+function getStaff(id){ return DB.staff.find(function(s){return s.id===id;}); }
+function rec(pid,key){
+  if(!DB.records[pid]) DB.records[pid]={};
+  if(!DB.records[pid][key]) DB.records[pid][key]={entries:[],leave:false,reason:null};
+  var r=DB.records[pid][key];
+  // مهاجرت از فرمت قدیمی (یک ورود/یک خروج) به فرمت جدید (چند ورود/خروج)
+  if(!r.entries){
+    r.entries=[];
+    if(r.in) r.entries.push({type:'in',time:r.in});
+    if(r.out) r.entries.push({type:'out',time:r.out});
+    delete r.in; delete r.out;
+  }
+  if(r.leave===undefined) r.leave=false;
+  if(r.reason===undefined) r.reason=null;
+  return r;
+}
+function sortedEntries(r){
+  return (r.entries||[]).slice().sort(function(a,b){
+    return a.time<b.time?-1:(a.time>b.time?1:0);
+  });
+}
+function calcWorkedMinutes(r){
+  var list=sortedEntries(r);
+  var total=0, openIn=null;
+  list.forEach(function(e){
+    if(e.type==='in'){ openIn=minutesOf(e.time); }
+    else if(e.type==='out' && openIn!==null){
+      var w=minutesOf(e.time)-openIn; if(w<0) w+=24*60;
+      total+=w; openIn=null;
+    }
+  });
+  return total;
+}
+function firstInMinutes(r){
+  var list=sortedEntries(r);
+  var first=list.find(function(e){return e.type==='in';});
+  return first?minutesOf(first.time):null;
+}
+function isCurrentlyIn(r){
+  var list=sortedEntries(r);
+  if(list.length===0) return false;
+  return list[list.length-1].type==='in';
+}
+
+/* ============ رندر صفحه امروز/روز انتخاب‌شده ============ */
+var todaySearch='';
+var selectedJ=todayJalali();
+function selectedKey(){ return jKey(selectedJ[0],selectedJ[1],selectedJ[2]); }
+function isSelectedToday(){
+  var tj=todayJalali();
+  return selectedJ[0]===tj[0]&&selectedJ[1]===tj[1]&&selectedJ[2]===tj[2];
+}
+function shiftSelectedDay(delta){
+  var g=jalaliToGregorian(selectedJ[0],selectedJ[1],selectedJ[2]);
+  var d=new Date(g[0],g[1]-1,g[2]+delta);
+  selectedJ=toJalali(d.getFullYear(),d.getMonth()+1,d.getDate());
+  renderToday();
+}
+function updateDateNav(){
+  var isToday=isSelectedToday();
+  document.getElementById('selectedDateLabel').textContent=isToday?'امروز':(J_WEEK[jWeekday(selectedJ[0],selectedJ[1],selectedJ[2])]);
+  document.getElementById('selectedDateSub').textContent=selectedJ[2]+' '+J_MONTHS[selectedJ[1]-1]+' '+selectedJ[0];
+  document.getElementById('jumpTodayBtn').style.display=isToday?'none':'block';
+  document.getElementById('staffListTitle').textContent=isToday?'پرسنل امروز':'پرسنل — '+selectedJ[2]+' '+J_MONTHS[selectedJ[1]-1]+' '+selectedJ[0];
+}
+document.getElementById('prevDayBtn').onclick=function(){ shiftSelectedDay(-1); };
+document.getElementById('nextDayBtn').onclick=function(){ shiftSelectedDay(1); };
+document.getElementById('jumpTodayBtn').onclick=function(){ selectedJ=todayJalali(); renderToday(); };
+
+/* ============ مودال تقویم شمسی (انتخاب هر روز) ============ */
+var calJ=null, calOnSelect=null;
+function openCalendar(initJ, onSelect){
+  calJ=initJ.slice();
+  calOnSelect=onSelect;
+  renderCalGrid();
+  document.getElementById('calModal').classList.add('show');
+}
+function closeCalModal(){ document.getElementById('calModal').classList.remove('show'); }
+function renderCalGrid(){
+  var jy=calJ[0], jm=calJ[1];
+  document.getElementById('calMonthLabel').textContent=J_MONTHS[jm-1]+' '+jy;
+  var head=document.getElementById('calWeekHead');
+  head.innerHTML=J_WEEK.map(function(w){ return '<div>'+w.slice(0,2)+'</div>'; }).join('');
+  var grid=document.getElementById('calGrid');
+  var firstWd=jWeekday(jy,jm,1);
+  var days=jMonthDays(jy,jm);
+  var todayJ=todayJalali();
+  var html='';
+  for(var i=0;i<firstWd;i++) html+='<div></div>';
+  for(var d=1; d<=days; d++){
+    var isToday=(d===todayJ[2]&&jm===todayJ[1]&&jy===todayJ[0]);
+    html+='<div class="cal-day'+(isToday?' today':'')+'" onclick="pickCalDay('+d+')">'+d+'</div>';
+  }
+  grid.innerHTML=html;
+}
+function pickCalDay(d){
+  calJ[2]=d;
+  closeCalModal();
+  if(calOnSelect) calOnSelect(calJ.slice());
+}
+document.getElementById('calPrevMonth').onclick=function(){ calJ[1]--; if(calJ[1]<1){calJ[1]=12;calJ[0]--;} renderCalGrid(); };
+document.getElementById('calNextMonth').onclick=function(){ calJ[1]++; if(calJ[1]>12){calJ[1]=1;calJ[0]++;} renderCalGrid(); };
+document.getElementById('dateDisplayBtn').onclick=function(){
+  openCalendar(selectedJ, function(picked){ selectedJ=picked; renderToday(); });
+};
+
+function renderToday(){
+  updateDateNav();
+  var key=selectedKey();
+  var box=document.getElementById('todayList');
+  if(DB.staff.length===0){
+    document.getElementById('todaySummary').innerHTML='';
+    box.innerHTML='<div class="empty">هنوز پرسنلی اضافه نشده. از تب «پرسنل» اضافه کنید.</div>'; return;
+  }
+  // خلاصهٔ روز انتخاب‌شده
+  var present=0,working=0,leaveCnt=0,done=0;
+  DB.staff.forEach(function(s){
+    var r=(DB.records[s.id]&&DB.records[s.id][key])?rec(s.id,key):null;
+    if(!r) return;
+    if(r.leave) leaveCnt++;
+    else if(r.entries.length>0){
+      present++;
+      if(isCurrentlyIn(r)) working++; else done++;
+    }
+  });
+  document.getElementById('todaySummary').innerHTML=
+    '<div class="stat"><div class="v">'+present+'/'+DB.staff.length+'</div><div class="l">حاضر</div></div>'+
+    '<div class="stat"><div class="v" style="color:#10b981">'+working+'</div><div class="l">در حال کار</div></div>'+
+    '<div class="stat"><div class="v">'+done+'</div><div class="l">کار تمام</div></div>'+
+    '<div class="stat"><div class="v" style="color:#f59e0b">'+leaveCnt+'</div><div class="l">مرخصی</div></div>';
+
+  box.innerHTML='';
+  var list=DB.staff.filter(function(s){
+    return !todaySearch || normFa(s.name).indexOf(normFa(todaySearch))!==-1;
+  });
+  if(list.length===0){ box.innerHTML='<div class="empty">پرسنلی با این نام پیدا نشد</div>'; return; }
+  list.forEach(function(s){
+    var r=rec(s.id,key);
+    var row=document.createElement('div'); row.className='person-row';
+    var status='';
+    if(r.leave){
+      status='<span class="badge" style="background:#fef3c7;color:#92400e;">مرخصی</span>'+
+        (r.reason?'<span class="reason-tag">'+r.reason+'</span>':'');
+    }else if(r.entries.length>0){
+      var ents=sortedEntries(r);
+      status=ents.map(function(en){
+        return '<span class="badge '+(en.type==='in'?'badge-in':'badge-out')+'">'+(en.type==='in'?'ورود':'خروج')+' '+en.time+'</span>';
+      }).join(' ');
+      status+=isCurrentlyIn(r)?' <span class="status-in">در حال کار</span>':' <span class="status-out">کار تمام</span>';
+      var worked=calcWorkedMinutes(r);
+      if(worked>0) status+=' <span class="status-out">('+fmtDuration(worked)+')</span>';
+    }else{
+      status='<span class="status-out">ثبت نشده</span>';
+    }
+    row.innerHTML=
+      '<div class="person-info">'+
+        '<div class="person-name">'+s.name+'</div>'+
+        '<div class="person-status">'+status+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
+        '<button class="btn btn-in btn-sm" onclick="quickIn(\''+s.id+'\')">ورود</button>'+
+        '<button class="btn btn-out btn-sm" onclick="quickOut(\''+s.id+'\')">خروج</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="quickAbsent(\''+s.id+'\')">نیامده</button>'+
+        '<button class="btn btn-ghost btn-sm" onclick="openTime(\''+s.id+'\',\''+key+'\')">✎</button>'+
+      '</div>';
+    box.appendChild(row);
+  });
+}
+function nowHHMM(){ var n=new Date(); return pad(n.getHours())+':'+pad(n.getMinutes()); }
+function quickIn(pid){
+  var r=rec(pid,selectedKey());
+  r.leave=false; r.reason=null;
+  var t=nowHHMM(); r.entries.push({type:'in',time:t}); save(); renderToday(); renderReport();
+  toast(getStaff(pid).name+' — ورود ثبت شد: '+t+(isSelectedToday()?'':' ('+selectedJ[2]+' '+J_MONTHS[selectedJ[1]-1]+')'));
+}
+function quickOut(pid){
+  var r=rec(pid,selectedKey());
+  r.leave=false; r.reason=null;
+  var t=nowHHMM(); r.entries.push({type:'out',time:t}); save(); renderToday(); renderReport();
+  toast(getStaff(pid).name+' — خروج ثبت شد: '+t+(isSelectedToday()?'':' ('+selectedJ[2]+' '+J_MONTHS[selectedJ[1]-1]+')'));
+}
+function quickAbsent(pid){
+  openTime(pid,selectedKey());
+  document.getElementById('leaveChk').checked=true;
+  document.getElementById('reasonField').style.display='block';
+}
+function allIn(){
+  if(!confirm('ثبت ورود همین لحظه برای تمام پرسنل در روز انتخاب‌شده؟'))return;
+  var key=selectedKey(),t=nowHHMM();
+  DB.staff.forEach(function(s){ var r=rec(s.id,key); if(!r.leave){ r.entries.push({type:'in',time:t}); } });
+  save(); renderToday(); renderReport(); toast('ورود همه ثبت شد: '+t);
+}
+function allOut(){
+  if(!confirm('ثبت خروج همین لحظه برای تمام پرسنل در روز انتخاب‌شده؟'))return;
+  var key=selectedKey(),t=nowHHMM();
+  DB.staff.forEach(function(s){ var r=rec(s.id,key); if(!r.leave && r.entries.length>0){ r.entries.push({type:'out',time:t}); } });
+  save(); renderToday(); renderReport(); toast('خروج همه ثبت شد: '+t);
+}
+
+/* ============ ویرایش دقیق زمان (چند ورود/خروج) ============ */
+var timeCtx={pid:null,key:null};
+var editingEntries=[];
+function renderEntriesEditor(){
+  var box=document.getElementById('entriesEditor');
+  if(editingEntries.length===0){
+    box.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:6px 0 12px;">هنوز ورودی ثبت نشده — با دکمه‌های زیر اضافه کن</div>';
+    return;
+  }
+  box.innerHTML='';
+  editingEntries.forEach(function(en,idx){
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:8px;margin-bottom:8px;';
+    row.innerHTML=
+      '<span class="badge '+(en.type==='in'?'badge-in':'badge-out')+'" style="width:44px;text-align:center;flex-shrink:0;">'+(en.type==='in'?'ورود':'خروج')+'</span>'+
+      '<input type="time" value="'+en.time+'" style="flex:1;padding:9px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;" data-idx="'+idx+'" class="entryTimeInput">'+
+      '<button type="button" class="btn btn-danger btn-sm" onclick="removeEntryRow('+idx+')">✕</button>';
+    box.appendChild(row);
+  });
+  box.querySelectorAll('.entryTimeInput').forEach(function(inp){
+    inp.onchange=function(){ editingEntries[+this.dataset.idx].time=this.value; };
+  });
+}
+function addEntryRow(type){
+  editingEntries.push({type:type, time:nowHHMM()});
+  renderEntriesEditor();
+}
+function removeEntryRow(idx){ editingEntries.splice(idx,1); renderEntriesEditor(); }
+function openTime(pid,key){
+  timeCtx={pid:pid,key:key};
+  var r=rec(pid,key);
+  document.getElementById('timeModalTitle').textContent=getStaff(pid).name+' — ثبت زمان';
+  editingEntries=sortedEntries(r).map(function(e){return {type:e.type,time:e.time};});
+  renderEntriesEditor();
+  document.getElementById('leaveChk').checked=!!r.leave;
+  document.getElementById('reasonInput').value=r.reason||'';
+  document.querySelectorAll('.reason-chip').forEach(function(c){
+    c.classList.toggle('picked', c.dataset.r===r.reason);
+  });
+  document.getElementById('reasonField').style.display=r.leave?'block':'none';
+  document.getElementById('timeModal').classList.add('show');
+}
+function closeTimeModal(){ document.getElementById('timeModal').classList.remove('show'); }
+document.getElementById('leaveChk').addEventListener('change',function(){
+  document.getElementById('reasonField').style.display=this.checked?'block':'none';
+});
+document.querySelectorAll('.reason-chip').forEach(function(c){
+  c.addEventListener('click',function(){
+    var already=c.classList.contains('picked');
+    document.querySelectorAll('.reason-chip').forEach(function(x){x.classList.remove('picked');});
+    document.getElementById('reasonInput').value=already?'':c.dataset.r;
+    if(!already) c.classList.add('picked');
+  });
+});
+document.getElementById('saveTimeBtn').onclick=function(){
+  var r=rec(timeCtx.pid,timeCtx.key);
+  if(document.getElementById('leaveChk').checked){
+    r.leave=true; r.entries=[];
+    r.reason=document.getElementById('reasonInput').value.trim()||null;
+  }else{
+    r.leave=false; r.reason=null;
+    r.entries=editingEntries.filter(function(e){return e.time;}).sort(function(a,b){
+      return a.time<b.time?-1:(a.time>b.time?1:0);
+    });
+  }
+  save(); closeTimeModal(); renderToday(); renderReport(); toast('ذخیره شد');
+};
+document.getElementById('clearTimeBtn').onclick=function(){
+  if(DB.records[timeCtx.pid]) delete DB.records[timeCtx.pid][timeCtx.key];
+  save(); closeTimeModal(); renderToday(); renderReport(); toast('پاک شد');
+};
+
+/* ============ مدیریت پرسنل ============ */
+function renderStaff(){
+  var box=document.getElementById('staffList');
+  if(DB.staff.length===0){ box.innerHTML='<div class="empty">هنوز پرسنلی اضافه نشده.</div>'; return; }
+  box.innerHTML='';
+  DB.staff.forEach(function(s){
+    var row=document.createElement('div'); row.className='person-row';
+    row.innerHTML=
+      '<div class="person-info"><div class="person-name">'+s.name+'</div>'+
+      '<div class="person-status status-out">موظف: '+s.hours+':'+pad(s.mins)+
+      ' • شروع: '+pad(s.startH)+':'+pad(s.startM)+'</div></div>'+
+      '<button class="btn btn-ghost btn-sm" onclick="editStaff(\''+s.id+'\')">✎</button>'+
+      '<button class="btn btn-danger btn-sm" onclick="delStaff(\''+s.id+'\')">حذف</button>';
+    box.appendChild(row);
+  });
+}
+var editingId=null;
+document.getElementById('addStaffBtn').onclick=function(){
+  if(DB.staff.length>=10){ toast('حداکثر ۱۰ پرسنل مجاز است'); return; }
+  editingId=null;
+  document.getElementById('staffModalTitle').textContent='افزودن پرسنل';
+  staffName.value=''; staffHours.value=8; staffMins.value=0; staffStartH.value=8; staffStartM.value=0;
+  document.getElementById('staffModal').classList.add('show');
+};
+function editStaff(id){
+  var s=getStaff(id); editingId=id;
+  document.getElementById('staffModalTitle').textContent='ویرایش پرسنل';
+  staffName.value=s.name; staffHours.value=s.hours; staffMins.value=s.mins;
+  staffStartH.value=s.startH; staffStartM.value=s.startM;
+  document.getElementById('staffModal').classList.add('show');
+}
+function delStaff(id){
+  if(!confirm('حذف این پرسنل و تمام سوابق او؟'))return;
+  DB.staff=DB.staff.filter(function(s){return s.id!==id;});
+  delete DB.records[id]; save(); renderStaff(); renderToday(); fillReportPersons();
+  toast('حذف شد');
+}
+function closeStaffModal(){ document.getElementById('staffModal').classList.remove('show'); }
+document.getElementById('saveStaffBtn').onclick=function(){
+  var name=staffName.value.trim();
+  if(!name){ toast('نام را وارد کنید'); return; }
+  var data={ name:name, hours:+staffHours.value||0, mins:+staffMins.value||0,
+             startH:+staffStartH.value||0, startM:+staffStartM.value||0 };
+  if(editingId){ Object.assign(getStaff(editingId),data); }
+  else{ data.id='p'+Date.now(); DB.staff.push(data); }
+  save(); closeStaffModal(); renderStaff(); renderToday(); fillReportPersons();
+  toast('ذخیره شد');
+};
+
+/* ============ گزارش ماهانه ============ */
+var reportJ=todayJalali();
+function fillReportPersons(){
+  var sel=document.getElementById('reportPerson'); var cur=sel.value;
+  sel.innerHTML='';
+  DB.staff.forEach(function(s){
+    var o=document.createElement('option'); o.value=s.id; o.textContent=s.name; sel.appendChild(o);
+  });
+  if(cur) sel.value=cur;
+}
+function renderReport(){
+  var jy=reportJ[0], jm=reportJ[1];
+  document.getElementById('monthLabel').textContent=J_MONTHS[jm-1]+' '+jy;
+  var sel=document.getElementById('reportPerson');
+  var pid=sel.value;
+  var grid=document.getElementById('summaryGrid');
+  var tbl=document.getElementById('reportTable');
+  if(!pid||DB.staff.length===0){
+    grid.innerHTML=''; tbl.innerHTML='<tr><td class="empty">پرسنلی انتخاب نشده</td></tr>'; return;
+  }
+  var s=getStaff(pid);
+  var quota=s.hours*60+s.mins;
+  var startMin=s.startH*60+s.startM;
+  var days=jMonthDays(jy,jm);
+  var rows='<tr><th>روز</th><th>هفته</th><th>ورود/خروج</th><th>کارکرد</th><th>اضافه/کسری</th><th>تأخیر</th><th>دلیل</th></tr>';
+  var totWork=0, totOver=0, totLate=0, presentDays=0, leaveDays=0;
+  for(var d=1; d<=days; d++){
+    var key=jKey(jy,jm,d);
+    var rawR=(DB.records[pid]&&DB.records[pid][key])?DB.records[pid][key]:null;
+    var wd=J_WEEK[jWeekday(jy,jm,d)];
+    var work='—', diff='—', late='—', entriesCell='—', reasonCell='—';
+    if(rawR&&rawR.leave){
+      entriesCell='<span style="color:#f59e0b;">مرخصی</span>'; leaveDays++;
+      reasonCell=rawR.reason?rawR.reason:'—';
+    }else if(rawR){
+      var r=rec(pid,key);
+      var ents=sortedEntries(r);
+      if(ents.length>0){
+        entriesCell=ents.map(function(en){return (en.type==='in'?'↪':'↩')+en.time;}).join('<br>');
+        var w=calcWorkedMinutes(r);
+        if(w>0){
+          totWork+=w; presentDays++;
+          work=fmtDuration(w);
+          var dd=w-quota; totOver+=dd; diff=fmtDuration(dd);
+        }
+        var firstIn=firstInMinutes(r);
+        if(firstIn!==null){
+          var lt=firstIn-startMin; if(lt>0){ totLate+=lt; late=fmtDuration(lt); } else late='—';
+        }
+      }
+    }
+    var isToday=(d===reportJ[2]&&jy===todayJalali()[0]&&jm===todayJalali()[1]);
+    var bg=isToday?'background:#eef6ff;':'';
+    rows+='<tr style="cursor:pointer;'+bg+'" onclick="openTime(\''+pid+'\',\''+key+'\')">'+
+      '<td class="num">'+d+'</td><td>'+wd+'</td>'+
+      '<td style="font-size:11px;">'+entriesCell+'</td>'+
+      '<td class="num">'+work+'</td><td class="num">'+diff+'</td><td class="num">'+late+'</td>'+
+      '<td style="font-size:11px;">'+reasonCell+'</td></tr>';
+  }
+  tbl.innerHTML=rows;
+  grid.innerHTML=
+    '<div class="stat"><div class="v">'+presentDays+'</div><div class="l">روز حضور</div></div>'+
+    '<div class="stat"><div class="v">'+fmtDuration(totWork)+'</div><div class="l">کل کارکرد (ساعت)</div></div>'+
+    '<div class="stat"><div class="v" style="color:'+(totOver>=0?'#10b981':'#ef4444')+'">'+fmtDuration(totOver)+'</div><div class="l">اضافه‌کاری / کسری</div></div>'+
+    '<div class="stat"><div class="v" style="color:#f59e0b">'+fmtDuration(totLate)+'</div><div class="l">مجموع تأخیر</div></div>'+
+    '<div class="stat"><div class="v" style="color:#f59e0b">'+leaveDays+'</div><div class="l">روز مرخصی</div></div>';
+}
+document.getElementById('prevMonth').onclick=function(){
+  reportJ[1]--; if(reportJ[1]<1){reportJ[1]=12;reportJ[0]--;} reportJ[2]=1; renderReport();
+};
+document.getElementById('nextMonth').onclick=function(){
+  reportJ[1]++; if(reportJ[1]>12){reportJ[1]=1;reportJ[0]++;} reportJ[2]=1; renderReport();
+};
+document.getElementById('monthLabel').onclick=function(){
+  openCalendar(reportJ, function(picked){ reportJ=picked; renderReport(); });
+};
+document.getElementById('reportPerson').onchange=renderReport;
+document.getElementById('exportBtn').onclick=function(){
+  var sel=document.getElementById('reportPerson'); var pid=sel.value; if(!pid)return;
+  var s=getStaff(pid); var jy=reportJ[0],jm=reportJ[1],days=jMonthDays(jy,jm);
+  var txt='گزارش حضور و غیاب\nپرسنل: '+s.name+'\nماه: '+J_MONTHS[jm-1]+' '+jy+'\n'+'='.repeat(30)+'\n';
+  for(var d=1;d<=days;d++){
+    var key=jKey(jy,jm,d); var rawR=(DB.records[pid]&&DB.records[pid][key])?DB.records[pid][key]:null;
+    if(rawR&&rawR.leave){
+      txt+=d+' '+J_MONTHS[jm-1]+' ('+J_WEEK[jWeekday(jy,jm,d)]+'): مرخصی'+(rawR.reason?' — دلیل: '+rawR.reason:'')+'\n';
+    }else if(rawR){
+      var r=rec(pid,key);
+      var ents=sortedEntries(r);
+      if(ents.length>0){
+        var entTxt=ents.map(function(en){return (en.type==='in'?'ورود':'خروج')+' '+en.time;}).join(' / ');
+        var w=calcWorkedMinutes(r);
+        txt+=d+' '+J_MONTHS[jm-1]+' ('+J_WEEK[jWeekday(jy,jm,d)]+'): '+entTxt+(w>0?' — کارکرد: '+fmtDuration(w):'')+'\n';
+      }
+    }
+  }
+  if(navigator.share){ navigator.share({title:'گزارش حضور',text:txt}).catch(function(){}); }
+  else{ navigator.clipboard.writeText(txt); toast('گزارش در کلیپ‌بورد کپی شد'); }
+};
+
+/* ============ کنترل صوتی فارسی ============ */
+var recognizing=false, recognition=null;
+function setupVoice(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ document.getElementById('voiceStatus').textContent='مرورگر از تشخیص صدا پشتیبانی نمی‌کند'; return; }
+  recognition=new SR();
+  recognition.lang='fa-IR'; recognition.continuous=false; recognition.interimResults=false;
+  recognition.onstart=function(){ recognizing=true; micBtn.classList.add('listening'); voiceStatus.textContent='در حال شنیدن...'; };
+  recognition.onend=function(){ recognizing=false; micBtn.classList.remove('listening'); };
+  recognition.onerror=function(e){
+    var msgs={
+      'not-allowed':'دسترسی میکروفون رد شده — از تنظیمات مرورگر/گوشی فعالش کن (یا از تب «تنظیمات» همین اپ دکمهٔ دسترسی میکروفون را بزن).',
+      'service-not-allowed':'دسترسی به سرویس تشخیص گفتار رد شد.',
+      'no-speech':'صدایی شنیده نشد، دوباره امتحان کن.',
+      'audio-capture':'میکروفونی پیدا نشد.',
+      'network':'مشکل اتصال اینترنت — تشخیص گفتار به اینترنت نیاز دارد.'
+    };
+    voiceStatus.textContent='❌ '+(msgs[e.error]||('خطا: '+e.error));
+    recognizing=false; micBtn.classList.remove('listening');
+  };
+  recognition.onresult=function(e){
+    var text=e.results[0][0].transcript.trim();
+    voiceStatus.textContent='شنیدم: «'+text+'»';
+    processVoice(text);
+  };
+}
+function speak(msg){
+  try{ var u=new SpeechSynthesisUtterance(msg); u.lang='fa-IR'; speechSynthesis.speak(u); }catch(e){}
+}
+/* --- نرمال‌سازی متن و اعداد فارسی --- */
+function normFa(t){
+  // اعداد فارسی/عربی به انگلیسی
+  var fa='۰۱۲۳۴۵۶۷۸۹', ar='٠١٢٣٤٥٦٧٨٩';
+  for(var i=0;i<10;i++){
+    t=t.replace(new RegExp(fa[i],'g'),i).replace(new RegExp(ar[i],'g'),i);
+  }
+  return t.replace(/ي/g,'ی').replace(/ك/g,'ک').replace(/\u200c/g,' ');
+}
+var TENS_WORDS={'بیست':20,'سی':30,'چهل':40,'پنجاه':50};
+var ONES_WORDS={'یک':1,'دو':2,'سه':3,'چهار':4,'پنج':5,'شش':6,'شیش':6,'هفت':7,'هشت':8,'نه':9};
+var UNIQUE_WORDS={'صفر':0,'ده':10,'یازده':11,'دوازده':12,'سیزده':13,'چهارده':14,'پانزده':15,'پونزده':15,
+  'شانزده':16,'شونزده':16,'هفده':17,'هیفده':17,'هجده':18,'هیجده':18,'نوزده':19};
+function parseFaNumber(s){
+  if(s==null) return null;
+  s=s.trim();
+  if(/^\d+$/.test(s)) return parseInt(s,10);
+  if(UNIQUE_WORDS[s]!==undefined) return UNIQUE_WORDS[s];
+  if(ONES_WORDS[s]!==undefined) return ONES_WORDS[s];
+  if(TENS_WORDS[s]!==undefined) return TENS_WORDS[s];
+  var parts=s.split(/\s+و\s+/);
+  if(parts.length===2 && TENS_WORDS[parts[0]]!==undefined && ONES_WORDS[parts[1]]!==undefined){
+    return TENS_WORDS[parts[0]]+ONES_WORDS[parts[1]];
+  }
+  return null;
+}
+
+/* --- موتور آفلاین کامل: تشخیص عمل/ساعت/دلیل در یک قطعه متن --- */
+var ACTION_LEAVE_RE=/(مرخصی|مریض|نیومد|نیامد|غایب|غیبت|استعلاجی|امروز نیست|نمیاد|نمی‌اید)/;
+var ACTION_OUT_RE=/(رفت|خروج|بره|خداحافظ|تموم شد|برگشت|زد بیرون|مرخص شد)/;
+var ACTION_IN_RE=/(آمد|اومد|امد|ورود|بیا|حاضر شد|حاضره|رسید|سرکار|سر کار|اول وقت)/;
+
+function extractClauseInfo(t, globalDayOffset){
+  var info={action:null,time:null,reason:null,dayOffset:globalDayOffset};
+
+  if(/پریروز/.test(t)) info.dayOffset=-2;
+  else if(/دیروز/.test(t)) info.dayOffset=-1;
+
+  if(ACTION_LEAVE_RE.test(t)) info.action='leave';
+  else if(ACTION_OUT_RE.test(t)) info.action='out';
+  else if(ACTION_IN_RE.test(t)) info.action='in';
+
+  if(info.action==='leave'){
+    if(/(مریض|استعلاجی)/.test(t)) info.reason='مریضی';
+    else if(/کار شخصی/.test(t)) info.reason='کار شخصی';
+    else if(/(بی\s*خبر|بدون اطلاع)/.test(t)) info.reason='بدون اطلاع';
+    else if(/مرخصی/.test(t)) info.reason='مرخصی استحقاقی';
+  }
+
+  var h=null,m=0;
+  var mNum=t.match(/ساعت\s*(\d{1,2})(?:\s*[:و]\s*(\d{1,2}))?/);
+  if(mNum){
+    h=parseInt(mNum[1],10);
+    if(mNum[2]) m=parseInt(mNum[2],10);
+  }else{
+    var mWord=t.match(/ساعت\s+([\u0600-\u06FF]+)(?:\s+و\s+([\u0600-\u06FF]+))?/);
+    if(mWord){
+      var w1=mWord[1], w2=mWord[2];
+      var hh=parseFaNumber(w1);
+      if(hh!==null){
+        h=hh;
+        // ترکیب فقط برای ساعت‌های ۲۰ تا ۲۳ (مثل «بیست و سه») معتبر است؛
+        // در غیر این صورت کلمهٔ دوم به دقیقه/نیم/ربع تعلق دارد، نه به ساعت
+        if(w2 && TENS_WORDS[w1]!==undefined && ONES_WORDS[w2]!==undefined && (TENS_WORDS[w1]+ONES_WORDS[w2])<=23){
+          h=TENS_WORDS[w1]+ONES_WORDS[w2];
+        }
+      }
+    }
+  }
+  if(/نیم/.test(t)) m=30;
+  if(/ربع/.test(t)) m=15;
+  var mAndMin=t.match(/و\s*([۰-۹\d]+|[\u0600-\u06FF]+(?:\s+و\s+[\u0600-\u06FF]+)?)\s*دقیقه/);
+  if(mAndMin){
+    var mm=parseFaNumber(mAndMin[1]);
+    if(mm!==null) m=mm;
+  }
+
+  if(h!==null){
+    if(/(بعد ?از ?ظهر|عصر|شب|بعدظهر)/.test(t) && h<12) h+=12;
+    else if(/ظهر/.test(t) && h>=1 && h<=5) h+=12;
+    else if(/ظهر/.test(t) && h===12){ /* already noon */ }
+    if(h===24) h=0;
+    info.time=pad(h)+':'+pad(m);
+  }else if(/^\s*[^ساعت]*ظهر/.test(t) && /ظهر/.test(t) && !mNum){
+    // فقط «ظهر» بدون عدد صریح
+  }
+  return info;
+}
+
+/* --- گروه‌بندی نام‌ها در جمله (برای پشتیبانی از چند نفر با وضعیت‌های جدا) --- */
+function findNameSpans(t){
+  var spans=[];
+  DB.staff.forEach(function(s){
+    var nm=normFa(s.name);
+    if(!nm) return;
+    var idx=-1;
+    while((idx=t.indexOf(nm, idx+1))!==-1){
+      spans.push({index:idx, end:idx+nm.length, staff:s, isAll:false});
+    }
+  });
+  var allMatch=t.match(/(همه|کل پرسنل|همگی|تمام پرسنل)/);
+  if(allMatch){
+    spans.push({index:allMatch.index, end:allMatch.index+allMatch[0].length, staff:null, isAll:true});
+  }
+  spans.sort(function(a,b){return a.index-b.index;});
+  return spans;
+}
+function buildPersonGroups(t){
+  var spans=findNameSpans(t);
+  var groups=[], cur=null;
+  spans.forEach(function(sp){
+    if(cur){
+      var between=t.substring(cur.end, sp.index);
+      if(/^[\s,،و]*$/.test(between)){
+        cur.items.push(sp); cur.end=sp.end; return;
+      }
+      groups.push(cur); cur=null;
+    }
+    cur={items:[sp], start:sp.index, end:sp.end};
+  });
+  if(cur) groups.push(cur);
+  return groups;
+}
+
+/* --- تحلیل کامل یک جمله، با پشتیبانی از چند نفر و چند وضعیت --- */
+function parseSentence(text){
+  var t=normFa(text);
+  var globalDayOffset=0;
+  if(/پریروز/.test(t)) globalDayOffset=-2;
+  else if(/دیروز/.test(t)) globalDayOffset=-1;
+
+  var groups=buildPersonGroups(t);
+  var items=[];
+  groups.forEach(function(g, i){
+    var clauseEnd=(i+1<groups.length)?groups[i+1].start:t.length;
+    var clauseText=t.substring(g.start, clauseEnd);
+    var info=extractClauseInfo(clauseText, globalDayOffset);
+    var isAll=g.items.some(function(x){return x.isAll;});
+    var people=isAll?DB.staff.slice():g.items.map(function(x){return x.staff;}).filter(Boolean);
+    if(people.length===0) return;
+    if(!info.action && !info.time) return;
+    items.push({people:people, action:info.action||'in', time:info.time, reason:info.reason, dayOffset:info.dayOffset});
+  });
+  return items;
+}
+
+/* --- اعمال یک نتیجهٔ تحلیل‌شده --- */
+function applyParse(p,sourceLabel){
+  var people=(p.people&&p.people.length)?p.people:(p.person?[p.person]:[]);
+  if(people.length===0) return null;
+  if(!p.action) p.action='in';
+  var tj;
+  if(p.dayOffset){
+    tj=todayJalali();
+    var g=jalaliToGregorian(tj[0],tj[1],tj[2]);
+    var d=new Date(g[0],g[1]-1,g[2]+p.dayOffset);
+    tj=toJalali(d.getFullYear(),d.getMonth()+1,d.getDate());
+  }else{
+    tj=selectedJ.slice();
+  }
+  var key=jKey(tj[0],tj[1],tj[2]);
+  var tm=p.time||nowHHMM();
+  var dayTxt=p.dayOffset===-1?'دیروز':(p.dayOffset===-2?'پریروز':(isSelectedToday()?'':('روز '+tj[2]+' '+J_MONTHS[tj[1]-1])));
+  var label= p.action==='leave'?'مرخصی' : (p.action==='out'?'خروج':'ورود');
+  people.forEach(function(person){
+    var r=rec(person.id,key);
+    if(p.action==='leave'){ r.leave=true; r.entries=[]; r.reason=p.reason||null; }
+    else if(p.action==='out'){ r.leave=false; r.reason=null; r.entries.push({type:'out',time:tm}); }
+    else { r.leave=false; r.reason=null; r.entries.push({type:'in',time:tm}); }
+  });
+  var names=people.map(function(x){return x.name;}).join(' و ');
+  var line;
+  if(p.action==='leave'){
+    line=names+': مرخصی '+dayTxt+(p.reason?' — '+p.reason:'');
+  }else{
+    line=names+': '+label+' '+dayTxt+' ساعت '+tm;
+  }
+  return {line:line, speakText:(p.action==='leave'?('مرخصی '+names+' ثبت شد'):(label+' '+names+' ساعت '+tm.replace(':',' و ')+' ثبت شد'))};
+}
+
+/* --- fallback به هوش مصنوعی آنلاین (اختیاری، فقط اگر در تنظیمات فعال شده باشد) --- */
+function buildAiPrompt(text){
+  var names=DB.staff.map(function(s){return s.name;}).join('، ');
+  return 'تو دستیار ثبت حضور و غیاب هستی. از جمله زیر این موارد را استخراج کن و فقط یک JSON برگردان بدون هیچ توضیح اضافه، بدون ```:\n'+
+    '{"items":[{"persons":["نام دقیق از این لیست: '+names+' — اگر «همه» گفته شد همه را بیاور"],"action":"in یا out یا leave","time":"HH:MM به فرمت ۲۴ساعته یا null","dayOffset":0,"reason":"دلیل مرخصی/غیبت اگر اشاره شد، یا null"}]}\n'+
+    'اگر جمله چند نفر با وضعیت‌های متفاوت داشت (مثل "امین اومد ولی محمود مریضه")، چند آیتم جدا در آرایه items بگذار.\n'+
+    'dayOffset: ۰ یعنی روزی که الان در برنامه باز است، -۱ دیروز، -۲ پریروز. leave یعنی مرخصی یا غیبت.\n'+
+    'جمله: "'+text+'"';
+}
+function handleAiJson(raw, labelFa){
+  raw=raw.replace(/```json|```/g,'').trim();
+  var j=JSON.parse(raw);
+  var rawItems=j.items||[j];
+  var lines=[], speakParts=[];
+  rawItems.forEach(function(it){
+    var arr=(it.persons||(it.person?[it.person]:[]));
+    var people=DB.staff.filter(function(s){
+      return arr.some(function(n){return normFa(s.name)===normFa(n||'');});
+    });
+    var result=applyParse({people:people,person:people[0]||null,action:it.action,time:it.time||null,dayOffset:it.dayOffset||0,reason:it.reason||null},labelFa);
+    if(result){ lines.push(result.line); speakParts.push(result.speakText); }
+  });
+  save(); renderToday(); renderReport();
+  if(lines.length===0){
+    voiceStatus.textContent='❌ نام پرسنل پیدا نشد';
+    speak('پرسنل پیدا نشد');
+    return;
+  }
+  voiceStatus.textContent='✅ '+lines.join(' | ')+' ('+labelFa+')';
+  speak(speakParts.join('. '));
+}
+function aiFallback(text){
+  var provider=localStorage.getItem('aiProvider')||'none';
+  if(provider==='gemini') geminiFallback(text);
+  else if(provider==='claude') claudeFallback(text);
+  else{
+    voiceStatus.textContent='❌ جمله فهمیده نشد. لطفاً واضح‌تر بگو، از دکمه‌های دستی استفاده کن، یا از تنظیمات یک دستیار آنلاین وصل کن.';
+    speak('متوجه نشدم');
+  }
+}
+function geminiFallback(text){
+  var key=localStorage.getItem('geminiKey');
+  if(!key){
+    voiceStatus.textContent='❌ کلید Gemini در تنظیمات وارد نشده.';
+    speak('متوجه نشدم'); return;
+  }
+  voiceStatus.textContent='🤖 در حال تحلیل با Gemini...';
+  fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+key,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{text:buildAiPrompt(text)}]}]})
+  }).then(function(res){return res.json();}).then(function(data){
+    try{
+      handleAiJson(data.candidates[0].content.parts[0].text, 'Gemini');
+    }catch(e){
+      voiceStatus.textContent='❌ پاسخ Gemini نامعتبر بود';
+      speak('متوجه نشدم');
+    }
+  }).catch(function(){
+    voiceStatus.textContent='❌ خطا در اتصال به Gemini';
+    speak('خطا در اتصال');
+  });
+}
+function claudeFallback(text){
+  var key=localStorage.getItem('claudeKey');
+  if(!key){
+    voiceStatus.textContent='❌ کلید Claude در تنظیمات وارد نشده.';
+    speak('متوجه نشدم'); return;
+  }
+  voiceStatus.textContent='🤖 در حال تحلیل با Claude...';
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'x-api-key':key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({
+      model:'claude-sonnet-5',
+      max_tokens:400,
+      messages:[{role:'user', content:buildAiPrompt(text)}]
+    })
+  }).then(function(res){return res.json();}).then(function(data){
+    try{
+      var textBlock=data.content.filter(function(c){return c.type==='text';})[0];
+      handleAiJson(textBlock.text, 'Claude');
+    }catch(e){
+      voiceStatus.textContent='❌ پاسخ Claude نامعتبر بود'+(data&&data.error?(': '+data.error.message):'');
+      speak('متوجه نشدم');
+    }
+  }).catch(function(){
+    voiceStatus.textContent='❌ خطا در اتصال به Claude (ممکن است مرورگر یا شبکه اجازهٔ تماس مستقیم ندهد)';
+    speak('خطا در اتصال');
+  });
+}
+
+/* --- نقطهٔ ورود: چه از صدا، چه از تایپ --- */
+function processVoice(text){
+  if(DB.staff.length===0){
+    voiceStatus.textContent='❌ اول از تب «پرسنل» افراد را اضافه کن.';
+    return;
+  }
+  var items=parseSentence(text);
+  if(items.length===0){
+    aiFallback(text);
+    return;
+  }
+  var lines=[], speakParts=[];
+  items.forEach(function(it){
+    var r=applyParse(it,'');
+    if(r){ lines.push(r.line); speakParts.push(r.speakText); }
+  });
+  save(); renderToday(); renderReport();
+  if(lines.length===0){
+    voiceStatus.textContent='❌ نام پرسنل پیدا نشد';
+    speak('پرسنل پیدا نشد');
+    return;
+  }
+  voiceStatus.textContent='✅ '+lines.join(' | ');
+  speak(speakParts.join('. '));
+}
+document.getElementById('cmdBtn').onclick=function(){
+  var v=document.getElementById('cmdInput').value.trim();
+  if(!v) return;
+  voiceStatus.textContent='در حال بررسی...';
+  processVoice(v);
+  document.getElementById('cmdInput').value='';
+};
+document.getElementById('cmdInput').addEventListener('keydown',function(e){
+  if(e.key==='Enter'){ document.getElementById('cmdBtn').click(); }
+});
+document.getElementById('micBtn').onclick=function(){
+  if(!recognition){ setupVoice(); }
+  if(recognizing){ recognition.stop(); return; }
+  try{ recognition.start(); }catch(e){}
+};
+
+/* ============ ناوبری ============ */
+document.querySelectorAll('.nav button').forEach(function(b){
+  b.onclick=function(){
+    document.querySelectorAll('.nav button').forEach(function(x){x.classList.remove('active');});
+    document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+    b.classList.add('active');
+    document.getElementById('page-'+b.dataset.page).classList.add('active');
+    if(b.dataset.page==='report'){ fillReportPersons(); renderReport(); }
+    if(b.dataset.page==='staff'){ renderStaff(); }
+    if(b.dataset.page==='settings'){ loadSettings(); }
+  };
+});
+
+/* ============ تنظیمات ============ */
+function updateProviderFields(){
+  var p=document.getElementById('aiProvider').value;
+  document.getElementById('geminiKeyField').style.display=(p==='gemini')?'block':'none';
+  document.getElementById('claudeKeyField').style.display=(p==='claude')?'block':'none';
+}
+function loadSettings(){
+  document.getElementById('aiProvider').value=localStorage.getItem('aiProvider')||'none';
+  document.getElementById('geminiKey').value=localStorage.getItem('geminiKey')||'';
+  document.getElementById('claudeKey').value=localStorage.getItem('claudeKey')||'';
+  updateProviderFields();
+  var last=localStorage.getItem('lastBackupAt');
+  var info=document.getElementById('lastBackupInfo');
+  if(last){
+    var days=Math.floor((Date.now()-(+last))/86400000);
+    info.textContent='آخرین پشتیبان: '+(days===0?'امروز':(days+' روز پیش'))+(days>7?' — پیشنهاد می‌شود یک بار دیگر پشتیبان بگیرید.':'');
+  }else{
+    info.textContent='هنوز پشتیبانی گرفته نشده.';
+  }
+}
+document.getElementById('aiProvider').addEventListener('change',updateProviderFields);
+document.getElementById('saveSettingsBtn').onclick=function(){
+  localStorage.setItem('aiProvider',document.getElementById('aiProvider').value);
+  localStorage.setItem('geminiKey',document.getElementById('geminiKey').value.trim());
+  localStorage.setItem('claudeKey',document.getElementById('claudeKey').value.trim());
+  toast('تنظیمات ذخیره شد');
+};
+
+/* ============ پشتیبان‌گیری / بازیابی ============ */
+document.getElementById('backupBtn').onclick=function(){
+  var data=JSON.stringify(DB,null,2);
+  var blob=new Blob([data],{type:'application/json'});
+  var url=URL.createObjectURL(blob);
+  var tj=todayJalali();
+  var a=document.createElement('a');
+  a.href=url; a.download='backup-hozoor-'+jKey(tj[0],tj[1],tj[2])+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  localStorage.setItem('lastBackupAt', String(Date.now()));
+  loadSettings();
+  toast('فایل پشتیبان دانلود شد');
+};
+document.getElementById('restoreBtn').onclick=function(){
+  document.getElementById('restoreFile').click();
+};
+document.getElementById('restoreFile').onchange=function(e){
+  var file=e.target.files[0]; if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      var d=JSON.parse(ev.target.result);
+      if(!d.staff||!d.records) throw new Error('فایل نامعتبر');
+      if(!confirm('بازیابی، اطلاعات فعلی را جایگزین می‌کند. ادامه؟'))return;
+      DB=d; save();
+      renderToday(); renderStaff(); fillReportPersons(); renderReport();
+      toast('اطلاعات بازیابی شد');
+    }catch(err){ toast('فایل نامعتبر است'); }
+  };
+  reader.readAsText(file);
+  e.target.value='';
+};
+
+/* ============ جستجوی پرسنل امروز ============ */
+document.getElementById('todaySearchBox').oninput=function(e){
+  todaySearch=e.target.value.trim(); renderToday();
+};
+
+/* ============ نصب برنامه (PWA) ============ */
+var deferredInstallPrompt=null;
+function isStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+}
+function isIOS(){
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+function updateInstallUI(){
+  var txt=document.getElementById('installStatusText');
+  var btn=document.getElementById('installBtn');
+  var iosHint=document.getElementById('iosInstallHint');
+  if(isStandalone()){
+    txt.textContent='✅ برنامه نصب شده و همین الان به‌صورت مستقل در حال اجراست.';
+    btn.style.display='none'; iosHint.style.display='none';
+  }else if(deferredInstallPrompt){
+    txt.textContent='برنامه آماده نصب روی صفحهٔ اصلی گوشیت است.';
+    btn.style.display='block'; iosHint.style.display='none';
+  }else if(isIOS()){
+    txt.textContent='برای نصب روی آیفون این مرحله را دنبال کن:';
+    btn.style.display='none'; iosHint.style.display='block';
+  }else{
+    txt.textContent='برای نصب، این صفحه را از مرورگر (Chrome) باز کن؛ اگر گزینهٔ نصب ظاهر نشد، از منوی مرورگر «Add to Home screen» را بزن.';
+    btn.style.display='none'; iosHint.style.display='none';
+  }
+}
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredInstallPrompt=e;
+  updateInstallUI();
+});
+document.getElementById('installBtn').onclick=function(){
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(function(){ deferredInstallPrompt=null; updateInstallUI(); });
+};
+window.addEventListener('appinstalled', function(){ deferredInstallPrompt=null; updateInstallUI(); toast('برنامه نصب شد ✅'); });
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+
+/* ============ دسترسی میکروفون ============ */
+function updateMicStatusText(state){
+  var el=document.getElementById('micStatusText');
+  var map={
+    granted:'وضعیت: ✅ دسترسی داده شده',
+    denied:'وضعیت: ❌ رد شده — از تنظیمات مرورگر/گوشی برای این سایت فعالش کن',
+    prompt:'وضعیت: هنوز درخواست نشده',
+    unsupported:'وضعیت: مرورگر این قابلیت را پشتیبانی نمی‌کند'
+  };
+  el.textContent=map[state]||'وضعیت: نامشخص';
+}
+function refreshMicStatus(){
+  if(navigator.permissions && navigator.permissions.query){
+    navigator.permissions.query({name:'microphone'}).then(function(res){
+      updateMicStatusText(res.state);
+      res.onchange=function(){ updateMicStatusText(res.state); };
+    }).catch(function(){ updateMicStatusText('prompt'); });
+  }else{
+    updateMicStatusText('prompt');
+  }
+}
+document.getElementById('micRequestBtn').onclick=function(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    updateMicStatusText('unsupported');
+    toast('مرورگر از دسترسی میکروفون پشتیبانی نمی‌کند');
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    stream.getTracks().forEach(function(t){ t.stop(); });
+    updateMicStatusText('granted');
+    toast('دسترسی میکروفون فعال شد ✅');
+  }).catch(function(){
+    updateMicStatusText('denied');
+    toast('دسترسی میکروفون رد شد');
+  });
+};
+
+/* ============ ساعت زنده و تاریخ ============ */
+function updateClock(){
+  var n=new Date();
+  document.getElementById('liveClock').textContent=pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds());
+}
+function updateDate(){
+  var tj=todayJalali();
+  document.getElementById('todayDate').textContent=
+    J_WEEK[jWeekday(tj[0],tj[1],tj[2])]+'، '+tj[2]+' '+J_MONTHS[tj[1]-1]+' '+tj[0];
+}
+
+/* ============ شروع ============ */
+load();
+updateDate(); updateClock(); setInterval(updateClock,1000);
+renderToday(); fillReportPersons(); renderReport(); setupVoice();
+updateInstallUI(); refreshMicStatus();
+</script>
+</body>
+</html>
