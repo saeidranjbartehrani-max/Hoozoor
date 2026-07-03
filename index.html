@@ -21,7 +21,7 @@
   }
   body{
     font-family:'Tahoma','Vazirmatn',sans-serif; background:var(--bg);
-    color:var(--text); direction:rtl; padding-bottom:80px;
+    color:var(--text); direction:rtl; padding-bottom:96px;
     -webkit-user-select:none; user-select:none;
   }
   header{
@@ -84,14 +84,28 @@
   .nav{
     position:fixed; bottom:0; right:0; left:0; background:var(--card);
     display:flex; border-top:1px solid var(--border); z-index:50;
-    box-shadow:0 -2px 8px rgba(0,0,0,.06);
+    box-shadow:0 -2px 8px rgba(0,0,0,.06); padding:6px 4px 8px;
   }
   .nav button{
-    flex:1; border:none; background:none; padding:10px 4px; cursor:pointer; font-family:inherit;
-    color:var(--muted); font-size:11px; display:flex; flex-direction:column; align-items:center; gap:3px;
+    flex:1; border:none; background:none; padding:4px 4px 2px; cursor:pointer; font-family:inherit;
+    color:var(--muted); font-size:11px; display:flex; flex-direction:column; align-items:center; gap:4px;
   }
   .nav button.active{ color:var(--primary); font-weight:bold; }
-  .nav button .ic{ font-size:20px; }
+  .nav button .ic{
+    font-size:21px; width:46px; height:46px; border-radius:16px;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(155deg,#ffffff,#e9edf3);
+    box-shadow:5px 5px 10px rgba(31,41,55,.10), -5px -5px 10px rgba(255,255,255,.85),
+      inset 0 1px 0 rgba(255,255,255,.6);
+    transition:transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s;
+  }
+  .nav button:active .ic{ transform:scale(.90); }
+  .nav button.active .ic{
+    background:linear-gradient(155deg,var(--primary-light),var(--primary));
+    box-shadow:0 8px 16px -4px rgba(31,78,120,.55), 0 2px 4px rgba(31,78,120,.3),
+      inset 0 1px 1px rgba(255,255,255,.5);
+    transform:translateY(-6px) scale(1.1);
+  }
 
   .modal-bg{
     position:fixed; inset:0; background:rgba(0,0,0,.5); display:none;
@@ -333,6 +347,10 @@
         <input type="number" id="staffStartM" min="0" max="59" value="0" placeholder="دقیقه">
       </div>
     </div>
+    <div class="field">
+      <label>دستمزد هر ساعت (ریال)</label>
+      <input type="number" id="staffWage" min="0" step="1000" placeholder="مثلاً: 500000">
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeStaffModal()">انصراف</button>
       <button class="btn btn-primary" id="saveStaffBtn">ذخیره</button>
@@ -463,6 +481,10 @@ function fmtDuration(mins){
   if(mins===null||isNaN(mins))return '—';
   var neg=mins<0; mins=Math.abs(mins);
   return (neg?'−':'')+Math.floor(mins/60)+':'+pad(mins%60);
+}
+function fmtRial(n){
+  if(n===null||isNaN(n))return '—';
+  return Math.round(n).toLocaleString('en-US')+' ریال';
 }
 
 /* ============ منطق پرسنل ============ */
@@ -744,10 +766,11 @@ function renderStaff(){
   box.innerHTML='';
   DB.staff.forEach(function(s){
     var row=document.createElement('div'); row.className='person-row';
+    var wageTxt=s.wage?(' • دستمزد: '+Number(s.wage).toLocaleString('fa-IR')+' ریال/ساعت'):'';
     row.innerHTML=
       '<div class="person-info"><div class="person-name">'+s.name+'</div>'+
       '<div class="person-status status-out">موظف: '+s.hours+':'+pad(s.mins)+
-      ' • شروع: '+pad(s.startH)+':'+pad(s.startM)+'</div></div>'+
+      ' • شروع: '+pad(s.startH)+':'+pad(s.startM)+wageTxt+'</div></div>'+
       '<button class="btn btn-ghost btn-sm" onclick="editStaff(\''+s.id+'\')">✎</button>'+
       '<button class="btn btn-danger btn-sm" onclick="delStaff(\''+s.id+'\')">حذف</button>';
     box.appendChild(row);
@@ -758,14 +781,14 @@ document.getElementById('addStaffBtn').onclick=function(){
   if(DB.staff.length>=10){ toast('حداکثر ۱۰ پرسنل مجاز است'); return; }
   editingId=null;
   document.getElementById('staffModalTitle').textContent='افزودن پرسنل';
-  staffName.value=''; staffHours.value=8; staffMins.value=0; staffStartH.value=8; staffStartM.value=0;
+  staffName.value=''; staffHours.value=8; staffMins.value=0; staffStartH.value=8; staffStartM.value=0; staffWage.value='';
   document.getElementById('staffModal').classList.add('show');
 };
 function editStaff(id){
   var s=getStaff(id); editingId=id;
   document.getElementById('staffModalTitle').textContent='ویرایش پرسنل';
   staffName.value=s.name; staffHours.value=s.hours; staffMins.value=s.mins;
-  staffStartH.value=s.startH; staffStartM.value=s.startM;
+  staffStartH.value=s.startH; staffStartM.value=s.startM; staffWage.value=s.wage||'';
   document.getElementById('staffModal').classList.add('show');
 }
 function delStaff(id){
@@ -779,10 +802,11 @@ document.getElementById('saveStaffBtn').onclick=function(){
   var name=staffName.value.trim();
   if(!name){ toast('نام را وارد کنید'); return; }
   var data={ name:name, hours:+staffHours.value||0, mins:+staffMins.value||0,
-             startH:+staffStartH.value||0, startM:+staffStartM.value||0 };
+             startH:+staffStartH.value||0, startM:+staffStartM.value||0,
+             wage:+staffWage.value||0 };
   if(editingId){ Object.assign(getStaff(editingId),data); }
   else{ data.id='p'+Date.now(); DB.staff.push(data); }
-  save(); closeStaffModal(); renderStaff(); renderToday(); fillReportPersons();
+  save(); closeStaffModal(); renderStaff(); renderToday(); fillReportPersons(); renderReport();
   toast('ذخیره شد');
 };
 
@@ -809,14 +833,15 @@ function renderReport(){
   var s=getStaff(pid);
   var quota=s.hours*60+s.mins;
   var startMin=s.startH*60+s.startM;
+  var wage=+s.wage||0;
   var days=jMonthDays(jy,jm);
-  var rows='<tr><th>روز</th><th>هفته</th><th>ورود/خروج</th><th>کارکرد</th><th>اضافه/کسری</th><th>تأخیر</th><th>دلیل</th></tr>';
-  var totWork=0, totOver=0, totLate=0, presentDays=0, leaveDays=0;
+  var rows='<tr><th>روز</th><th>هفته</th><th>ورود/خروج</th><th>کارکرد</th><th>اضافه/کسری</th><th>تأخیر</th><th>دریافتی</th><th>دلیل</th></tr>';
+  var totWork=0, totOver=0, totLate=0, totEarn=0, presentDays=0, leaveDays=0;
   for(var d=1; d<=days; d++){
     var key=jKey(jy,jm,d);
     var rawR=(DB.records[pid]&&DB.records[pid][key])?DB.records[pid][key]:null;
     var wd=J_WEEK[jWeekday(jy,jm,d)];
-    var work='—', diff='—', late='—', entriesCell='—', reasonCell='—';
+    var work='—', diff='—', late='—', entriesCell='—', reasonCell='—', earnCell='—';
     if(rawR&&rawR.leave){
       entriesCell='<span style="color:#f59e0b;">مرخصی</span>'; leaveDays++;
       reasonCell=rawR.reason?rawR.reason:'—';
@@ -830,6 +855,10 @@ function renderReport(){
           totWork+=w; presentDays++;
           work=fmtDuration(w);
           var dd=w-quota; totOver+=dd; diff=fmtDuration(dd);
+          if(wage>0){
+            var earn=(w/60)*wage; totEarn+=earn;
+            earnCell=fmtRial(earn);
+          }
         }
         var firstIn=firstInMinutes(r);
         if(firstIn!==null){
@@ -843,6 +872,7 @@ function renderReport(){
       '<td class="num">'+d+'</td><td>'+wd+'</td>'+
       '<td style="font-size:11px;">'+entriesCell+'</td>'+
       '<td class="num">'+work+'</td><td class="num">'+diff+'</td><td class="num">'+late+'</td>'+
+      '<td class="num" style="font-size:11px;white-space:nowrap;">'+earnCell+'</td>'+
       '<td style="font-size:11px;">'+reasonCell+'</td></tr>';
   }
   tbl.innerHTML=rows;
@@ -851,7 +881,8 @@ function renderReport(){
     '<div class="stat"><div class="v">'+fmtDuration(totWork)+'</div><div class="l">کل کارکرد (ساعت)</div></div>'+
     '<div class="stat"><div class="v" style="color:'+(totOver>=0?'#10b981':'#ef4444')+'">'+fmtDuration(totOver)+'</div><div class="l">اضافه‌کاری / کسری</div></div>'+
     '<div class="stat"><div class="v" style="color:#f59e0b">'+fmtDuration(totLate)+'</div><div class="l">مجموع تأخیر</div></div>'+
-    '<div class="stat"><div class="v" style="color:#f59e0b">'+leaveDays+'</div><div class="l">روز مرخصی</div></div>';
+    '<div class="stat"><div class="v" style="color:#f59e0b">'+leaveDays+'</div><div class="l">روز مرخصی</div></div>'+
+    (wage>0?'<div class="stat" style="grid-column:span 2;"><div class="v" style="color:#10b981">'+fmtRial(totEarn)+'</div><div class="l">دریافتی این ماه (بر اساس '+fmtRial(wage)+' در ساعت)</div></div>':'');
 }
 document.getElementById('prevMonth').onclick=function(){
   reportJ[1]--; if(reportJ[1]<1){reportJ[1]=12;reportJ[0]--;} reportJ[2]=1; renderReport();
@@ -866,6 +897,7 @@ document.getElementById('reportPerson').onchange=renderReport;
 document.getElementById('exportBtn').onclick=function(){
   var sel=document.getElementById('reportPerson'); var pid=sel.value; if(!pid)return;
   var s=getStaff(pid); var jy=reportJ[0],jm=reportJ[1],days=jMonthDays(jy,jm);
+  var wage=+s.wage||0, totEarn=0;
   var txt='گزارش حضور و غیاب\nپرسنل: '+s.name+'\nماه: '+J_MONTHS[jm-1]+' '+jy+'\n'+'='.repeat(30)+'\n';
   for(var d=1;d<=days;d++){
     var key=jKey(jy,jm,d); var rawR=(DB.records[pid]&&DB.records[pid][key])?DB.records[pid][key]:null;
@@ -877,10 +909,13 @@ document.getElementById('exportBtn').onclick=function(){
       if(ents.length>0){
         var entTxt=ents.map(function(en){return (en.type==='in'?'ورود':'خروج')+' '+en.time;}).join(' / ');
         var w=calcWorkedMinutes(r);
-        txt+=d+' '+J_MONTHS[jm-1]+' ('+J_WEEK[jWeekday(jy,jm,d)]+'): '+entTxt+(w>0?' — کارکرد: '+fmtDuration(w):'')+'\n';
+        var earnTxt='';
+        if(w>0 && wage>0){ var earn=(w/60)*wage; totEarn+=earn; earnTxt=' — دریافتی: '+fmtRial(earn); }
+        txt+=d+' '+J_MONTHS[jm-1]+' ('+J_WEEK[jWeekday(jy,jm,d)]+'): '+entTxt+(w>0?' — کارکرد: '+fmtDuration(w):'')+earnTxt+'\n';
       }
     }
   }
+  if(wage>0){ txt+='='.repeat(30)+'\nدستمزد هر ساعت: '+fmtRial(wage)+'\nجمع دریافتی این ماه: '+fmtRial(totEarn)+'\n'; }
   if(navigator.share){ navigator.share({title:'گزارش حضور',text:txt}).catch(function(){}); }
   else{ navigator.clipboard.writeText(txt); toast('گزارش در کلیپ‌بورد کپی شد'); }
 };
